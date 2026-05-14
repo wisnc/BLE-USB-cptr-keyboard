@@ -85,9 +85,9 @@ void displayWelcomeScreen() {
     M5Cardputer.Display.setTextSize(2);
     M5Cardputer.Display.printf("M5-Keyboard-Mouse");
 
-    M5Cardputer.Display.setCursor(70, 120);
+    M5Cardputer.Display.setCursor(60, 120);
     M5Cardputer.Display.setTextSize(1);
-    M5Cardputer.Display.printf("Version 1.1 - Geo"); 
+    M5Cardputer.Display.printf("Version 2.0 - Modded"); 
 
     delay(2000);
 }
@@ -146,4 +146,18 @@ void displaySelectionScreen(bool mode) {
     }
     M5Cardputer.Display.setCursor(42, 90);
     M5Cardputer.Display.printf("Bluetooth");
+}
+
+void displayUnpairMessage() {
+    M5Cardputer.Display.fillScreen(TFT_BLACK);
+    M5Cardputer.Display.setTextSize(2);
+    M5Cardputer.Display.setTextColor(TFT_ORANGE);
+    M5Cardputer.Display.setCursor(30, 50);
+    M5Cardputer.Display.print("BT Unpaired");
+    M5Cardputer.Display.setTextSize(1.5);
+    M5Cardputer.Display.setTextColor(TFT_LIGHTGREY);
+    M5Cardputer.Display.setCursor(30, 80);
+    M5Cardputer.Display.print("Bonds cleared. Ready");
+    M5Cardputer.Display.setCursor(30, 95);
+    M5Cardputer.Display.print("to pair again.");
 }
