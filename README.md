@@ -20,3 +20,10 @@ This project implements a USB HID and a BLE HID device using the M5Cardputer, ca
 - <b> Mode :</b> Toggle GO button (on the edge) to change between Keyboard and Mouse
 - <b>Keyboard :</b> Default Cardputer Keys. The keyboard layout depends on the configuration of the connected PC.
 - <b> Mouse : </b>Arrow LEFT/RIGHT/UP/DOWN and 'OK' and '\\' (just above 'OK' Button)</b>
+
+
+## Difference from fork
+
+- <b> Brightness :</b> Can control brightness with fn+- and fn+=
+- <b> Unpair :</b> holding Btn0 unpairs BLE
+- <b> Extra keys : </b> Win/Cmd keys now work through .opt and fn arrow keys as well
