@@ -37,13 +37,20 @@ With the unit on the Grove port, the wheel scrolls in mouse mode and sends Page 
 
 ## Bluetooth slots
 
-Each slot advertises under its own address as `keybm 1`, `keybm 2` and `keybm 3`, so each host pairs to one slot only. Holding <b>G0</b> for 3 s clears the active slot's pairing and restarts; remove the device on that host too.
+Each slot advertises under its own address as `keybm 1`, `keybm 2` and `keybm 3`, so each host pairs to one slot only.
 
-The slot-to-host map is kept in `/.keybm/bonds`.
+Holding <b>G0</b> for 3 s clears the active slot's pairing, then moves that slot to a fresh address and a fresh name such as `keybm 1 - K7Q2`, and restarts. The new name is shown before the restart. The previous host can no longer find the device; its old entry stays listed there until removed, and the new name tells the two apart.
+
+Pairings are kept on the SD card, not in internal flash:
+
+- `/.keybm/bt/slot1` to `slot3` hold each slot's pairing keys and the host's input subscriptions, so a host reconnects and types straight away after a power cycle
+- `/.keybm/slots` holds each slot's address generation and name suffix, plus the address the active slot came up on at last boot
+
+Without the card, pairings last only until power-off, every slot uses its original address and name, and a clear cannot move the address.
 
 ## Config
 
-`/.keybm/config` is created with defaults on first boot. Changes take effect after a restart.
+`/.keybm/config` is created with defaults on first boot, and any key missing from an existing file is added with its default. Changes take effect after a restart.
 
 | Key | Default | Meaning |
 |---|---|---|
@@ -61,6 +68,7 @@ The slot-to-host map is kept in `/.keybm/bonds`.
 | `usb_wait` | `150` | USB host detection window in ms |
 | `name` | `keybm` | Bluetooth name, slot number appended |
 | `scroll_dir` | `1` | `-1` reverses the Unit Scroll |
+| `debug` | `0` | `1` replaces both screens with a Bluetooth debug screen |
 
 ## Difference from fork
 
@@ -72,4 +80,5 @@ The slot-to-host map is kept in `/.keybm/bonds`.
 - F1 to F12 on `fn` plus the number row
 - New display: key map in keyboard mode, IMU gauge and mouse graphic in mouse mode
 - Reports sent only on change, independent mouse buttons, matched cursor speed across USB and Bluetooth
+- Bluetooth on NimBLE, with pairings stored on SD
 - Library versions pinned

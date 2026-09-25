@@ -8,7 +8,7 @@
 
 #define KEYBM_DIR    "/.keybm"
 #define KEYBM_CONFIG "/.keybm/config"
-#define KEYBM_BONDS  "/.keybm/bonds"
+#define KEYBM_SLOTS  "/.keybm/slots"
 
 Config cfg;
 bool sdReady = false;
@@ -31,6 +31,7 @@ static void defaults() {
     cfg.usbWait = 150;
     strcpy(cfg.name, "keybm");
     cfg.scrollDir = 1;
+    cfg.debug = false;
 }
 
 static void trim(char* s) {
@@ -80,7 +81,17 @@ static bool parseAxes(const char* v) {
     return true;
 }
 
+static const char* const KEYS[] = {
+    "theme", "imu_zero", "imu_dead", "imu_max", "imu_speed", "imu_axes", "move_speed",
+    "brightness", "bright_step", "slot", "link", "usb_wait", "name", "scroll_dir", "debug"
+};
+static const int KEY_COUNT = sizeof(KEYS) / sizeof(KEYS[0]);
+static uint32_t seenKeys = 0;
+
 static void apply(const char* k, const char* v) {
+    for (int i = 0; i < KEY_COUNT; i++) {
+        if (!strcasecmp(k, KEYS[i])) seenKeys |= 1u << i;
+    }
     if (!strcasecmp(k, "theme")) {
         const char* p = v;
         if (*p == '#') p++;
@@ -118,6 +129,8 @@ static void apply(const char* k, const char* v) {
         }
     } else if (!strcasecmp(k, "scroll_dir")) {
         cfg.scrollDir = atoi(v) < 0 ? -1 : 1;
+    } else if (!strcasecmp(k, "debug")) {
+        cfg.debug = atoi(v) != 0;
     }
 }
 
@@ -148,6 +161,7 @@ bool configSave() {
     f.printf("usb_wait=%d\n", cfg.usbWait);
     f.printf("name=%s\n", cfg.name);
     f.printf("scroll_dir=%d\n", cfg.scrollDir);
+    f.printf("debug=%d\n", cfg.debug ? 1 : 0);
     f.close();
     return true;
 }
@@ -178,50 +192,43 @@ void configBegin() {
         apply(k, v);
     }
     f.close();
+    if (seenKeys != (1u << KEY_COUNT) - 1) configSave();
 }
 
-static int hexv(char c) {
-    if (c >= '0' && c <= '9') return c - '0';
-    c = (char)tolower((unsigned char)c);
-    if (c >= 'a' && c <= 'f') return c - 'a' + 10;
-    return -1;
-}
-
-int bondsLoad(BondRec* out, int max) {
-    if (!sdReady || !SD.exists(KEYBM_BONDS)) return 0;
-    File f = SD.open(KEYBM_BONDS, FILE_READ);
-    if (!f) return 0;
-    int n = 0;
-    char line[40];
-    while (n < max && readLine(f, line, sizeof(line))) {
+bool slotsLoad(SlotState* s) {
+    for (int i = 0; i < 3; i++) {
+        s[i].gen = 0;
+        s[i].suffix[0] = 0;
+    }
+    if (!sdReady || !SD.exists(KEYBM_SLOTS)) return false;
+    File f = SD.open(KEYBM_SLOTS, FILE_READ);
+    if (!f) return false;
+    char line[48];
+    while (readLine(f, line, sizeof(line))) {
         trim(line);
-        if (strlen(line) != 19 || line[1] != '=') continue;
-        int s = line[0] - '0';
-        if (s < 1 || s > 3) continue;
-        bool ok = true;
-        for (int i = 0; i < 6 && ok; i++) {
-            const char* p = line + 2 + i * 3;
-            int hi = hexv(p[0]), lo = hexv(p[1]);
-            if (hi < 0 || lo < 0 || (i < 5 && p[2] != ':')) ok = false;
-            else out[n].addr[i] = (uint8_t)(hi * 16 + lo);
+        if (strlen(line) < 3 || line[1] != '=') continue;
+        int n = line[0] - '1';
+        if (n < 0 || n > 2) continue;
+        char* colon = strchr(line + 2, ':');
+        if (colon) *colon = 0;
+        s[n].gen = (uint8_t)clampi(atoi(line + 2), 0, 255);
+        if (colon) {
+            strncpy(s[n].suffix, colon + 1, 4);
+            s[n].suffix[4] = 0;
+            trim(s[n].suffix);
         }
-        if (!ok) continue;
-        out[n].slot = (uint8_t)s;
-        n++;
     }
     f.close();
-    return n;
+    return true;
 }
 
-bool bondsSave(const BondRec* recs, int n) {
+bool slotsSave(const SlotState* s, int active, const char* address) {
     if (!sdReady) return false;
     if (!SD.exists(KEYBM_DIR)) SD.mkdir(KEYBM_DIR);
-    File f = SD.open(KEYBM_BONDS, FILE_WRITE);
+    File f = SD.open(KEYBM_SLOTS, FILE_WRITE);
     if (!f) return false;
-    for (int i = 0; i < n; i++) {
-        const uint8_t* a = recs[i].addr;
-        f.printf("%u=%02X:%02X:%02X:%02X:%02X:%02X\n", recs[i].slot, a[0], a[1], a[2], a[3], a[4], a[5]);
-    }
+    for (int i = 0; i < 3; i++) f.printf("%d=%u:%s\n", i + 1, s[i].gen, s[i].suffix);
+    if (address && *address) f.printf("active=%d %s\n", active, address);
     f.close();
     return true;
 }

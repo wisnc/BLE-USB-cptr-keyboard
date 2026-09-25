@@ -21,19 +21,18 @@ struct Config {
     int usbWait;
     char name[24];
     int scrollDir;
+    bool debug;
 };
 
-struct BondRec {
-    uint8_t slot;
-    uint8_t addr[6];
+struct SlotState {
+    uint8_t gen;
+    char suffix[5];
 };
-
-static const int MAX_BONDS = 16;
 
 extern Config cfg;
 extern bool sdReady;
 
 void configBegin();
 bool configSave();
-int bondsLoad(BondRec* out, int max);
-bool bondsSave(const BondRec* recs, int n);
+bool slotsLoad(SlotState* s);
+bool slotsSave(const SlotState* s, int active, const char* address);

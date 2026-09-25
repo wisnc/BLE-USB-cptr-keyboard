@@ -12,6 +12,7 @@
 #include "imu.h"
 #include "scroll.h"
 #include "ui.h"
+#include "debug.h"
 
 static const int BTN_G0 = 0;
 static const uint32_t TICK_MS = 8;
@@ -121,6 +122,11 @@ static void resetInputState() {
 }
 
 static void showMode() {
+    if (cfg.debug) {
+        dbgScreen();
+        dbgLog(false, "mode %s", mouseMode ? "mouse" : "keyboard");
+        return;
+    }
     if (mouseMode) uiMouseScreen();
     else uiKeyboardScreen();
     uiStatus(mouseMode, usbLink, cfg.slot, hidLinked());
@@ -140,15 +146,17 @@ static void restartWith(const char* a, const char* b, uint32_t hold) {
     resetInputState();
     uiMessage(a, b);
     delay(hold);
+    hidFlush();
     esp_restart();
 }
 
 static void clearSlot() {
     char a[24];
+    char b[40];
     snprintf(a, sizeof(a), "slot %d cleared", cfg.slot);
     resetInputState();
-    hidClearSlot(cfg.slot);
-    restartWith(a, "restarting", 1200);
+    if (!hidClearSlot(cfg.slot, b, sizeof(b))) strcpy(b, "no sd, address kept");
+    restartWith(a, b, 2500);
 }
 
 static void switchSlot(int n) {
@@ -337,6 +345,7 @@ void setup() {
     pinMode(BTN_G0, INPUT_PULLUP);
 
     configBegin();
+    if (cfg.debug) dbgBootCounters();
     M5.Display.setBrightness((uint8_t)cfg.brightness);
     uiBegin(cfg.theme);
 
@@ -349,6 +358,9 @@ void setup() {
         usbLink = hidUsbHostSeen();
     }
     hidUseUsb(usbLink);
+    dbg.loadState = -1;
+    dbg.saveState = -1;
+    dbgLog(false, "link %s wait%lums", usbLink ? "usb" : "bt", (unsigned long)(millis() - usbStart));
     if (!usbLink) hidStartBle(cfg.name, cfg.slot);
 
     scrollBegin();
@@ -373,13 +385,14 @@ void loop() {
     if (mouseMode) mouseStep(now, tick, scroll);
     else keyboardStep(tick, scroll);
 
-    if (hidTakeAuthEvent()) hidSyncBonds(cfg.slot);
+    hidPoll(now);
 
     if (brightDirty && now - brightChanged >= SAVE_DELAY_MS) {
         brightDirty = false;
         configSave();
     }
 
-    uiStatus(mouseMode, usbLink, cfg.slot, hidLinked());
+    if (cfg.debug) dbgUpdate(mouseMode, usbLink, now);
+    else uiStatus(mouseMode, usbLink, cfg.slot, hidLinked());
     delay(1);
 }
